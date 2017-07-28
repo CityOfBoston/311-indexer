@@ -25,7 +25,7 @@ Resources:
   LogGroup:
     Type: 'AWS::Logs::LogGroup'
     Properties:
-      LogGroupName: !Sub '/${Namespace}/${ShortName}'
+      LogGroupName: !Sub '/${Cluster}/${AWS::StackName}'
       RetentionInDays: 90
 
   TaskDefinition:
