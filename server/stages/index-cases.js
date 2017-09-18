@@ -3,7 +3,7 @@
 import Rx from 'rxjs';
 
 import type Elasticsearch from '../services/Elasticsearch';
-import type { LoadedCaseBatch } from './load-cases';
+import type { HydratedCaseRecord } from './types';
 
 import {
   queue,
@@ -20,24 +20,15 @@ type Deps = {
   opbeat: Opbeat,
 };
 
-// Reduce batch records array down to only those whose cases loaded
-const reduceToIndexableCases = (batch: LoadedCaseBatch) =>
-  batch.reduce(
-    (arr, r) =>
-      r.case ? [...arr, { case: r.case, replayId: r.replayId }] : arr,
-    []
-  );
-
 export default ({ elasticsearch, opbeat }: Deps) => (
-  batch$: Rx.Observable<LoadedCaseBatch>
+  cases$: Rx.Observable<HydratedCaseRecord>
 ) =>
-  batch$.let(
+  // 1s buffers so we can bulk index. Can push empty arrays, which we filter.
+  cases$.bufferTime(1000).filter(arr => !!arr.length).let(
     queue(
-      caseBatch =>
+      recordArr =>
         Rx.Observable
-          .defer(() =>
-            elasticsearch.createCases(reduceToIndexableCases(caseBatch))
-          )
+          .defer(() => elasticsearch.createCases(recordArr))
           .let(
             retryWithFallback(5, 2000, {
               error: err => logNonfatalError('index-cases', err),
@@ -48,10 +39,10 @@ export default ({ elasticsearch, opbeat }: Deps) => (
           }),
       {
         length: length => logQueueLength('index-cases', length),
-        error: (err, batch: LoadedCaseBatch) => {
+        error: (err, batch: Array<HydratedCaseRecord>) => {
           opbeat.captureError(err);
           logMessage('index-cases', 'Permanent failure indexing cases', {
-            ids: batch.map(v => v.id),
+            ids: batch.map(v => v.case.service_request_id),
           });
         },
       }
