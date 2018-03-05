@@ -54,7 +54,7 @@
     "lodash": "^4.17.4",
     "moment": "^2.18.1",
     "node-cleanup": "^2.1.2",
-    "node-fetch": "^1.7.1",
+    "node-fetch": "^2.1.0",
     "opbeat": "^4.14.2",
     "rxjs": "^5.4.2",
     "url-search-params": "^0.10.0"
